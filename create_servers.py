@@ -7,7 +7,7 @@ MASTER_COUNT = 2
 WORKER_COUNT = 3
 CLUSTER_NAME = 'Auto'
 
-if not os.path.exists('temp')
+if not os.path.exists('temp'):
   os.makedirs('temp')
 
 def create_server(name):
@@ -33,10 +33,10 @@ def HA_config():
   f = open('hacfg.tmpl')
   tmpl = f.read()
   f.close()
-  f = open('temp' + CLUSTER_NAME + '_HA.txt')
+  f = open('temp/' + CLUSTER_NAME + '_HA.txt')
   ha_ip = f.read().strip()
   f.close()
-  f = open('temp' + CLUSTER_NAME + '_masters.txt')
+  f = open('temp/' + CLUSTER_NAME + '_masters.txt')
   masters = f.readlines()
   backend = ""
   for i, item in enumerate(masters):
@@ -46,7 +46,7 @@ def HA_config():
   f = open('temp/haproxy.cfg', 'w')
   f.write(tmpl)
   f.close()
-#create_HA()
-#create_masters()
+create_HA()
+create_masters()
 HA_config()
 
