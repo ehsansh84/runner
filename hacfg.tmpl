@@ -1,0 +1,12 @@
+frontend kubernetes-frontend
+  bind %s:6443
+  mode tcp
+  option tcplog
+  default_backend kubernetes-backend
+
+backend kubernetes-backend
+  mode tcp
+  option tcp-check
+  balance roundrobin
+%s
+
