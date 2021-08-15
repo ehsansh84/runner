@@ -14,6 +14,7 @@ from pymongo import MongoClient
 #con = MongoClient('mongodb://mongodb:27021')
 con = MongoClient('mongodb://localhost:27021')
 db = con['cluster']
+col_servers = db['servers']
 
 print_mode= False
 if len(sys.argv) > 1:
@@ -29,7 +30,6 @@ def create_server(name):
     output = subprocess.check_output(command, shell=True).decode()
     pat = re.compile("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
     IP = pat.search(output)
-    col_servers = db['servers']
     col_servers.insert_one({
         "ip": IP.group(),
 	"status": "free",
@@ -37,45 +37,29 @@ def create_server(name):
 })
     return IP.group()
 
-def create_masters():
-  f = open('temp/%s_masters.txt' % CLUSTER_NAME, 'w')
-  for i in range(MASTER_COUNT):
-    IP = create_server(CLUSTER_NAME+ '_master' + str(i))
-    f.write(IP+'\n')
-  f.close()
+def get_free_server(cluster, role):
+  server_info = col_servers.find_one({"status": "free"})
+  col_servers.update_one({'_id': server_info['_id']}, {'$set': {'cluster': cluster, 'role': role, "status": "used"}})
+  return server_info
 
-def create_HA():
-  IP = create_server(CLUSTER_NAME+ '_HA')
-  f = open('temp/%s_HA.txt' % CLUSTER_NAME, 'w')
-  f.write(IP+'\n')
-  f.close()
-
-def get_ha_ip():
-  f = open('temp/' + CLUSTER_NAME + '_HA.txt')
-  ha_ip = f.read().strip()
-  f.close()
-  return ha_ip
-
-def get_masters_ip():
-  f = open('temp/' + CLUSTER_NAME + '_masters.txt')
-  masters = f.readlines()
-  f.close()
-  ips = [ip.strip() for ip in masters]
-  return ips
-
-def HA_config():
-  ha_ip = get_ha_ip()
+def create_cluster():
+  ha_server = get_free_server(CLUSTER_NAME, 'HA')
+  ha_ip = ha_server['ip']
   f = open('hacfg.tmpl')
   tmpl = f.read()
   f.close()
-  masters = get_masters_ip()
+  #TODO Need to edit for multiple masters
+  #master_servers = [get_free_server(CLUSTER_NAME, "Master")]
+  master_servers = []
+  for i in range(MASTER_COUNT):
+    master_servers.append(get_free_server(CLUSTER_NAME, "Master"))
+  #master_server_ip = [master_server['ip']]
   backend = ""
   hosts = ""
-  for i, item in enumerate(masters):
-      backend += "  server kmaster%s %s:6443 check fall 3 rise 2\n" % (i, item)
-      hosts += "%s kmaster%s\n" % (item.strip(), i)
+  for item in master_servers:
+      backend += "  server %s %s:6443 check fall 3 rise 2\n" % (item['name'],item['ip'])
+      hosts += "%s %s\n" % (item['ip'], item['name'])
   tmpl = tmpl % (ha_ip, backend)
-  #print(tmpl)
   f = open('temp/haproxy.cfg', 'w')
   f.write(tmpl)
   f.close()
@@ -91,24 +75,48 @@ def HA_config():
   else:
     output = subprocess.check_output(command, shell=True).decode()
 
+def get_masters(cluster):
+    result = col_servers.find({'role': "Master", 'cluster': cluster})
+    return list(result)
+
+def get_ha(cluster):
+    result = col_servers.find_one({'role': "HA", 'cluster': cluster})
+    return result
+    
 def activate_masters():
     ips = ""
-    for ip in get_masters_ip():
-      #os.system('ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "%s"' % ip)
-      ips += ip + ","
-    command = "ansible-playbook activate-masters.yml -e 'ha_ip=%s' -i %s" % (get_ha_ip(), ips)
+    for master in get_masters(CLUSTER_NAME):
+      os.system('ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "%s"' % master['ip'])
+      ips += master['ip'] + ","
+    command = "ansible-playbook activate-masters.yml -e 'ha_ip=%s' -i %s" % (get_ha(CLUSTER_NAME)['ip'], ips)
     if print_mode:
       print(command)
     else:
       output = subprocess.check_output(command, shell=True).decode()
     #print(output)
-   
 
-#create_HA()
-#create_masters()
-#HA_config()
+def join_worker():
+    command = "ansible-playbook token.yml -i %s," % get_masters(CLUSTER_NAME)[0]['ip']
+    print(command)
+    if print_mode:
+      print(command)
+    else:
+      output = subprocess.check_output(command, shell=True).decode()
+    
+    worker = get_free_server(CLUSTER_NAME, 'Worker')
+
+    command = "ansible-playbook join-worker.yml -i %s," % worker['ip']
+    print(command)
+    if print_mode:
+      print(command)
+    else:
+      output = subprocess.check_output(command, shell=True).decode()
+
+
+#create_cluster()
 #activate_masters()
-for i in range(20):
-  create_server('node' + str(i))
+join_worker()
+#for i in range(20):
+#  create_server('node' + str(i))
 
 

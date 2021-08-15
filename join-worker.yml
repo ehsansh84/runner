@@ -1,0 +1,8 @@
+- name: Join a worker
+  hosts: all 
+  become: yes
+  tasks:
+  - name: Copying token to worker nodes
+    copy: src=temp/token.sh dest=token.sh
+  - name: join
+    shell: sh token.sh

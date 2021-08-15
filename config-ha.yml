@@ -13,6 +13,8 @@
     - template:
         dest: "/etc/hosts"
         src: "temp/hosts"
+    - name: systemctl restart
+      systemd: name=haproxy state=restarted         
         #    - service:
         #        name: "haproxy"
         #        state: restarted

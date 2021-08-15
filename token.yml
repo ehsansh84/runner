@@ -1,0 +1,12 @@
+- name: Get token
+  hosts: all 
+  become: yes
+  tasks:
+    - name: Get token
+      shell: kubeadm token create --print-join-command
+      register: output
+    - debug:
+        var: output.stdout
+    - name: save token
+      local_action: copy content={{ output.stdout }} dest=temp/token.sh
+
