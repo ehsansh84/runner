@@ -9,11 +9,9 @@ MASTER_COUNT = 2
 WORKER_COUNT = 3
 CLUSTER_NAME = 'D'
 
-from pymongo import MongoClient
-#MONGO_CONNECTION = os.getenv('MONGO')
-#con = MongoClient('mongodb://mongodb:27021')
-con = MongoClient('mongodb://localhost:27021')
-db = con['cluster']
+if not os.path.exists('temp'):
+  os.makedirs('temp')
+
 
 print_mode= False
 if len(sys.argv) > 1:
@@ -29,12 +27,6 @@ def create_server(name):
     output = subprocess.check_output(command, shell=True).decode()
     pat = re.compile("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
     IP = pat.search(output)
-    col_servers = db['servers']
-    col_servers.insert_one({
-        "ip": IP.group(),
-	"status": "free",
-	"name": name 
-})
     return IP.group()
 
 def create_masters():
@@ -104,11 +96,8 @@ def activate_masters():
     #print(output)
    
 
-#create_HA()
-#create_masters()
-#HA_config()
-#activate_masters()
-for i in range(20):
-  create_server('node' + str(i))
-
+create_HA()
+create_masters()
+HA_config()
+activate_masters()
 

@@ -1,3 +1,6 @@
+global
+  stats socket /var/run/haproxy.stat level admin mode 600
+
 frontend kubernetes-frontend
   bind %s:6443
   mode tcp

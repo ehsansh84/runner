@@ -10,6 +10,9 @@
         src: "temp/haproxy.cfg"
     - name: systemctl restart
       systemd: name=systemd-resolved state=restarted         
+    - template:
+        dest: "/etc/hosts"
+        src: "temp/hosts"
         #    - service:
         #        name: "haproxy"
         #        state: restarted

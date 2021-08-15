@@ -1,0 +1,20 @@
+- name: Activate masters
+  hosts: all 
+  become: yes
+  tasks:
+    - name: "Do it!"
+      shell: "kubeadm init --control-plane-endpoint={{ ha_ip }}:6443 --upload-certs"
+    - name: Export2
+      shell: kubectl version | base64 | tr -d '\n'
+      register: output
+    - name: Print
+      debug: msg="kubectl apply -f https://cloud.weave.works/k8s/net?k8s-version={{ output.stdout }} --kubeconfig=/etc/kubernetes/admin.conf"
+    - name: Exec all
+      shell: "kubectl apply -f https://cloud.weave.works/k8s/net?k8s-version={{ output.stdout }} --insecure-skip-tls-verify --kubeconfig=/etc/kubernetes/admin.conf"
+      become: yes
+      register: output2
+    - name: output
+      debug:
+        msg: "{{ output2.stdout }}"
+
+

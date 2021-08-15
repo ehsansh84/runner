@@ -1,0 +1,7 @@
+- name: Reset masters
+  hosts: all 
+  become: yes
+  tasks:
+    - name: "Do it!"
+      shell: "kubeadm reset"
+      
